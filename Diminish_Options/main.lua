@@ -4,9 +4,12 @@ local Panel = NS.Panel
 local TestMode = NS.TestMode
 local L = NS.L
 
+_G.DIMINISH_OPTIONS = NS
+
 -- TODO: option anchor to UIParent
 -- TODO: option show friendly timers AND show enemy timers toggles (target/focus)
 -- TODO: option indicator text size & position?
+-- TODO: replace grow left checkbox with dropdown for all directions
 
 NS.PLAYER_NAME = UnitName("player") .. "-" .. GetRealmName()
 
@@ -16,6 +19,7 @@ NS.unitFrames = {
     [L.FOCUS] = "focus",
     [L.PARTY] = "party",
     [L.ARENA] = "arena",
+    [L.NAMEPLATE] = "nameplate",
 }
 
 -- Proxy table for diminish savedvariables

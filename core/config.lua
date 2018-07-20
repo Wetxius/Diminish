@@ -113,6 +113,21 @@ do
                 offsetY = 20,
                 offsetX = -66,
             },
+
+            nameplate = {
+                enabled = false,
+                zones = {
+                    pvp = true, arena = true, none = true,
+                    party = false, raid = false, scenario = false,
+                },
+                disabledCategories = defaultsDisabledCategories,
+                watchFriendly = false,
+                iconSize = 22,
+                iconPadding = 6,
+                growLeft = false,
+                offsetY = 22,
+                offsetX = 70,
+            },
         },
     }
 end

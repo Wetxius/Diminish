@@ -9,7 +9,7 @@ local backdrop = {
     tile = false,
 }
 
-local TestMode = {}
+local TestMode = CreateFrame("Frame")
 TestMode.pool = CreateFramePool("Frame") -- just for testing purposes
 NS.TestMode = TestMode
 
@@ -40,6 +40,12 @@ local function OnDragStop(self)
     local db = DIMINISH_NS.db.unitFrames[self.realUnit]
     db.offsetY = yOfs
     db.offsetX = xOfs
+
+    if self.realUnit == "nameplate" then -- TODO: remove?
+        -- Fix nameplate anchoring bug after dragging
+        self:ClearAllPoints()
+        self:SetPoint("CENTER", self:GetParent(), xOfs, yOfs)
+    end
 
     local isArena = strfind(self.unit, "arena")
     local isParty = strfind(self.unit, "party")
@@ -73,6 +79,10 @@ end
 
 function TestMode:IsTestingOrAnchoring()
     return isTesting or isAnchoring
+end
+
+function TestMode:IsTesting()
+    return isTesting
 end
 
 function TestMode:ToggleArenaAndPartyFrames(state, forceHide)
@@ -151,11 +161,11 @@ function TestMode:ToggleArenaAndPartyFrames(state, forceHide)
 end
 
 function TestMode:HideAnchors()
-    for frame in self.pool:EnumerateActive() do
-        frame:Hide()
-        self.pool:Release(frame)
-    end
     isAnchoring = false
+    self.pool:ReleaseAll()
+    if not isTesting then
+        self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+    end
     self:ToggleArenaAndPartyFrames(false)
 end
 
@@ -199,11 +209,40 @@ function TestMode:CreateDummyAnchor(parent, unit, unitID)
 
     frame.tooltip:SetFormattedText(L.ANCHORDRAG, strupper(unitID or unit), db.growLeft and L.LEFT or L.RIGHT)
     frame:SetSize(db.iconSize, db.iconSize)
-    frame:SetPoint("CENTER", parent, db.offsetX, db.offsetY)
+    frame:SetPoint("CENTER", db.offsetX, db.offsetY)
     frame:Show()
 
     isAnchoring = true
 end
+
+local function ReanchorForNameplate()
+    local anchor = C_NamePlate.GetNamePlateForUnit("target")
+    if not anchor then return end
+
+    if isAnchoring then
+        for frame in TestMode.pool:EnumerateActive() do
+            if frame.unit == "nameplate" then
+                -- TODO: isforbidden check?
+                local db = DIMINISH_NS.db.unitFrames["nameplate"]
+                frame:SetParent(anchor)
+                frame:SetPoint("CENTER", anchor, db.offsetX, db.offsetY)
+                frame:Show()
+                return
+            end
+        end
+
+        -- if we got here then dummy anchor hasn't been created yet
+        TestMode:CreateDummyAnchor(anchor, "nameplate")
+    end
+end
+
+local function OnTargetChanged()
+    -- Delay function call because GetNamePlateForUnit() is not
+    -- ready immediately after PLAYER_TARGET_CHANGED is triggered
+    C_Timer.After(0.2, ReanchorForNameplate)
+end
+
+TestMode:SetScript("OnEvent", OnTargetChanged)
 
 function TestMode:ShowAnchors()
     TestMode:ToggleArenaAndPartyFrames(true)
@@ -220,6 +259,12 @@ function TestMode:ShowAnchors()
                 local anchor = DIMINISH_NS.Icons:GetAnchor(unit)
                 TestMode:CreateDummyAnchor(anchor, unitID, unit)
             end
+        elseif unitID == "nameplate" then
+            local anchor = C_NamePlate.GetNamePlateForUnit("target")
+            TestMode:CreateDummyAnchor(anchor, unitID)
+
+            self:RegisterEvent("PLAYER_TARGET_CHANGED")
+            --self:SetScript("OnEvent", OnTargetChanged)
         else
             local anchor = DIMINISH_NS.Icons:GetAnchor(unitID)
             TestMode:CreateDummyAnchor(anchor, unitID)
@@ -236,11 +281,15 @@ function TestMode:Test(hide)
         isTesting = false
         TestMode:ToggleArenaAndPartyFrames(false, hide)
         DIMINISH_NS.Timers:ResetAll()
+        if not isAnchoring then
+            self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+        end
         return
     end
 
     TestMode:ToggleArenaAndPartyFrames(true)
     isTesting = true
+    self:RegisterEvent("PLAYER_TARGET_CHANGED")
 
     local DNS = DIMINISH_NS
     DNS.Timers:Insert(UnitGUID("player"), nil, DNS.CATEGORIES.STUN, 81429, false, true, true)

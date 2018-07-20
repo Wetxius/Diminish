@@ -145,6 +145,16 @@ function Timers:Refresh(unitID)
     local unitGUID = UnitGUID(unitID)
     local prevGUID = activeGUIDs[unitID]
     activeGUIDs[unitID] = unitGUID
+
+    -- FIXME:
+    if DIMINISH_OPTIONS and strfind(unitID, "nameplate") then
+        if DIMINISH_OPTIONS.TestMode:IsTesting() then
+            if UnitIsUnit("target", unitID) then
+                unitGUID = UnitGUID("player")
+            end
+        end
+    end
+
     if not unitGUID then return end
 
     -- Hide active timers belonging to previous guid
@@ -197,6 +207,19 @@ C_Timer.NewTicker(50, function()
         end
     end
 end)
+
+function Timers:RemoveActiveGUID(unitID)
+    activeGUIDs[unitID] = nil
+end
+
+function Timers:RemoveTest(unitGUID)
+    for unit, guid in pairs(activeGUIDs) do
+        if guid == unitGUID then
+            activeGUIDs[unit] = nil
+            return
+        end
+    end
+end
 
 function Timers:ResetAll(clearGUIDs)
     for guid, categories in pairs(activeTimers) do
@@ -294,6 +317,10 @@ do
             for i = 1, #testModeUnits do
                 Start(timer, isApplied, testModeUnits[i], isUpdate, isRefresh, onAuraEnd)
             end
+            local nameplate = C_NamePlate.GetNamePlateForUnit("target")
+            if nameplate then
+                Start(timer, isApplied, strlower(nameplate:GetName()), isUpdate, isRefresh, onAuraEnd)
+            end
             return
         end
 
@@ -323,6 +350,10 @@ do
         if timer.testMode then
             for i = 1, #testModeUnits do
                 Stop(timer, testModeUnits[i], preventRemove)
+            end
+            local nameplate = C_NamePlate.GetNamePlateForUnit("target")
+            if nameplate then
+                Stop(timer, strlower(nameplate:GetName()), preventRemove) -- TODO: works with Start?
             end
             return
         end

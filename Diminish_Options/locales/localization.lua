@@ -103,3 +103,5 @@ L["ZONE_BATTLEGROUNDS"] = "Battlegrounds & Brawls"
 L["ZONE_DUNGEONS"] = "Dungeons & Raids"
 L["ZONE_OUTDOORS"] = "World"
 L["ZONES_TOOLTIP"] = "Enable tracking for this zone."
+
+L.NAMEPLATE = "Nameplates"
